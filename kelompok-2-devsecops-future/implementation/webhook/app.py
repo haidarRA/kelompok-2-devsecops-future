@@ -1,6 +1,7 @@
 import logging
 import time
 
+import urllib3
 from flask import Flask, request, jsonify
 from kubernetes import client, config
 
@@ -10,7 +11,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("falco-webhook")
 
 config.load_incluster_config()
-api = client.CoreV1Api()
+cfg = client.Configuration.get_default_copy()
+cfg.connection_pool_size = 10
+cfg.retries = urllib3.Retry(
+    total=2,
+    backoff_factor=0.5,
+    status_forcelist=[500, 502, 503, 504],
+)
+api = client.CoreV1Api(api_client=client.ApiClient(configuration=cfg))
 
 
 

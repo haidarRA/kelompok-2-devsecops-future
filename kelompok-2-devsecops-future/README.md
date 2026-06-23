@@ -128,9 +128,9 @@ kubectl exec -n falco $FALCO_POD -- kill -HUP 1
 
 ```bash
 eval $(minikube docker-env)
-docker build -t falco-webhook:v3 implementation/webhook/
+docker build -t falco-webhook:v4 implementation/webhook/
 kubectl apply -f implementation/webhook/webhook-manifests.yaml
-kubectl set image deployment/falco-webhook -n falco webhook=falco-webhook:v3
+kubectl set image deployment/falco-webhook -n falco webhook=falco-webhook:v4
 kubectl patch deployment falco-webhook -n falco -p \
   '{"spec":{"template":{"spec":{"containers":[{"name":"webhook","imagePullPolicy":"Never"}]}}}}'
 kubectl rollout status deployment/falco-webhook -n falco
