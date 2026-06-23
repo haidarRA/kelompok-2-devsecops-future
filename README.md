@@ -506,3 +506,35 @@ Sebelum:
 Sesudah:
 
 ![Health Endpoint Setelah Pull Image Baru](./Screenshot/bagian-7-health-after.png)
+
+# Week 16 — DevSecOps Enhancement Scaffold
+
+
+
+```
+week16-enhancement/
+│
+├── policies/opa/                            <- 3 Rego policy (Paper A)
+│   ├── image-policy.rego
+│   ├── security-context-policy.rego
+│   └── resource-policy.rego
+├── implementation/
+│   ├── falco/custom-rules.yaml              <- rule deteksi shell spawn (Paper B)
+│   ├── kyverno/delete-suspicious-pods.yaml  <- auto-delete policy (Paper B)
+│   └── webhook/                             <- Flask webhook + Dockerfile + manifest
+│       ├── app.py
+│       ├── Dockerfile
+│       ├── requirements.txt
+│       └── webhook-manifests.yaml           <- termasuk RBAC least-privilege
+├── ci/gitlab-ci-additions.yml               <- job baru untuk .gitlab-ci.yml
+├── evaluation/
+│   ├── test-manifests/opa/                  <- 20 skenario uji (S1-01 s/d S4-05)
+│   ├── test-manifests/runtime/              <- pod simulasi attacker
+│   ├── metrics-before.md                    <- template baseline
+│   ├── metrics-after.md                     <- template hasil lengkap
+│   └── analysis.md                          <- template analisis jujur
+└── scripts/
+    ├── run-opa-tests.sh                     <- otomatis test 20 skenario -> CSV
+    └── run-runtime-tests.sh                 <- otomatis ukur MTTD/MTTR 5x -> CSV
+```
+
