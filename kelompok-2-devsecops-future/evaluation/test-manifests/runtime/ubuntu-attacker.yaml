@@ -1,0 +1,13 @@
+# Pod simulasi penyerang -- dipakai untuk skenario RT-01 s/d RT-04
+# Sesuai metodologi Paper B (Shenoy et al., 2025)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-attacker
+  namespace: default
+spec:
+  containers:
+    - name: ubuntu
+      image: ubuntu:22.04
+      command: ["sleep"]
+      args: ["3600"]

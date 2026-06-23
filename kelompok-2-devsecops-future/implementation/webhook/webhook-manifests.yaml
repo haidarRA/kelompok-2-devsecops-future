@@ -1,0 +1,84 @@
+# ============================================================
+# Webhook deployment + service + RBAC
+# ServiceAccount khusus dengan izin TERBATAS hanya untuk
+# get/list/patch pods -- prinsip least privilege.
+# ============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: falco
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: falco-webhook-sa
+  namespace: falco
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: falco-webhook-pod-labeler
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: falco-webhook-pod-labeler-binding
+subjects:
+  - kind: ServiceAccount
+    name: falco-webhook-sa
+    namespace: falco
+roleRef:
+  kind: ClusterRole
+  name: falco-webhook-pod-labeler
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falco-webhook
+  namespace: falco
+  labels:
+    app: falco-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: falco-webhook
+  template:
+    metadata:
+      labels:
+        app: falco-webhook
+    spec:
+      serviceAccountName: falco-webhook-sa
+      containers:
+        - name: webhook
+          # Ganti dengan image hasil build kalian sendiri, contoh:
+          # registry.gitlab.com/<namespace>/<project>/falco-webhook:latest
+          image: falco-webhook:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          resources:
+            requests: {cpu: "50m", memory: "64Mi"}
+            limits: {cpu: "200m", memory: "128Mi"}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 5000}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: falco-webhook
+  namespace: falco
+spec:
+  selector:
+    app: falco-webhook
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000

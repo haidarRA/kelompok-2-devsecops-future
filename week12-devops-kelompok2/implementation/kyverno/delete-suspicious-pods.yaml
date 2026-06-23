@@ -1,0 +1,25 @@
+# Kyverno ClusterCleanupPolicy - berdasarkan Paper B (Shenoy et al., 2025)
+# Menghapus otomatis pod yang sudah diberi label suspicious=true
+# oleh webhook (lihat implementation/webhook/app.py)
+#
+# Scope dibatasi ke namespace aplikasi supaya komponen Falco/Kyverno
+# sendiri tidak ikut terhapus oleh alert observability yang mereka hasilkan.
+# ============================================================
+apiVersion: kyverno.io/v2
+kind: ClusterCleanupPolicy
+metadata:
+  name: delete-suspicious-pods
+spec:
+  schedule: "* * * * *"
+  deletionPropagationPolicy: Background
+  match:
+    any:
+      - resources:
+          kinds:
+            - Pod
+          namespaces:
+            - default
+            - taskflow-prod
+          selector:
+            matchLabels:
+              suspicious: "true"

@@ -1,0 +1,42 @@
+# ============================================================
+# TAMBAHAN untuk .gitlab-ci.yml yang sudah ada (Week 12)
+# ============================================================
+#
+# CARA PAKAI:
+# 1. Tambahkan "policy-check" ke daftar `stages:` di .gitlab-ci.yml,
+#    posisikan SETELAH "build" dan SEBELUM "package", contoh:
+#
+#    stages:
+#      - init
+#      - test
+#      - build
+#      - policy-check   <-- BARU
+#      - package
+#      - verify
+#      - security-scan
+#      - release
+#      - deploy
+#
+# 2. Copy job `validate-k8s-manifest` di bawah ini ke .gitlab-ci.yml
+#
+# 3. Copy folder policies/opa/*.rego ke root repo kalian
+#
+# Job ini menjalankan conftest (pembungkus OPA untuk testing config file)
+# terhadap kubernetes/deployment.yaml SEBELUM image di-build/deploy.
+# Kalau ada pelanggaran -> pipeline GAGAL, developer dapat notifikasi
+# Telegram (pakai notify_template yang sudah ada), dan deployment
+# TIDAK lanjut ke stage berikutnya.
+# ============================================================
+
+validate-k8s-manifest:
+  stage: policy-check
+  image: openpolicyagent/conftest:v0.55.0
+  needs: ["compile-binary"]
+  before_script: []
+  script:
+    - echo "Menjalankan OPA policy check terhadap manifest Kubernetes..."
+    - conftest test kubernetes/deployment.yaml --policy policies/opa/ --output table
+  <<: *notify_template
+  only:
+    - main
+    - develop

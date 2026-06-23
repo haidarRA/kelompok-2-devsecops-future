@@ -1,0 +1,23 @@
+# ============================================================
+# Kyverno ClusterPolicy - berdasarkan Paper B (Shenoy et al., 2025)
+# Menghapus otomatis pod yang sudah diberi label suspicious=true
+# oleh webhook (lihat implementation/webhook/app.py)
+# ============================================================
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: delete-suspicious-pods
+spec:
+  rules:
+    - name: delete-pods-on-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              selector:
+                matchLabels:
+                  suspicious: "true"
+      validate:
+        message: "Suspicious pod detected. Auto-remediation triggered by runtime threat mitigation policy."
+        deny: {}

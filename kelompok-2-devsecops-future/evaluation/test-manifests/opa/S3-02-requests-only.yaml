@@ -1,0 +1,22 @@
+# Expected: DENY (ada requests, tidak ada limits)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-s3-02
+  namespace: taskflow-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: test-s3-02}
+  template:
+    metadata:
+      labels: {app: test-s3-02}
+    spec:
+      containers:
+        - name: app
+          image: registry.gitlab.com/haidarra-devops/week-9-devops-taskflow:sha-abc1234
+          resources:
+            requests: {cpu: "100m", memory: "128Mi"}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000

@@ -1,0 +1,20 @@
+# Expected: DENY (tidak ada blok resources sama sekali)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-s3-01
+  namespace: taskflow-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: test-s3-01}
+  template:
+    metadata:
+      labels: {app: test-s3-01}
+    spec:
+      containers:
+        - name: app
+          image: registry.gitlab.com/haidarra-devops/week-9-devops-taskflow:sha-abc1234
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000

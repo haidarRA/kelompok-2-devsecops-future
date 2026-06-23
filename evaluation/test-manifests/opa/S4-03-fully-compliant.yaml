@@ -1,0 +1,25 @@
+# Expected: ALLOW (manifest lengkap, sesuai semua policy) - variasi 03
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-s4-03
+  namespace: taskflow-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: test-s4-03}
+  template:
+    metadata:
+      labels: {app: test-s4-03}
+    spec:
+      containers:
+        - name: app
+          image: registry.gitlab.com/haidarra-devops/week-9-devops-taskflow:sha-abc1203
+          resources:
+            requests: {cpu: "100m", memory: "128Mi"}
+            limits: {cpu: "500m", memory: "256Mi"}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            privileged: false
