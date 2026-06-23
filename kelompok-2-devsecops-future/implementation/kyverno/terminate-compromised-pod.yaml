@@ -1,0 +1,15 @@
+apiVersion: kyverno.io/v2
+kind: ClusterCleanupPolicy
+metadata:
+  name: terminate-compromised-pod
+spec:
+  schedule: "*/1 * * * *"
+  deletionPropagationPolicy: Background
+  match:
+    any:
+      - resources:
+          kinds:
+            - Pod
+          selector:
+            matchLabels:
+              suspicious: "true"

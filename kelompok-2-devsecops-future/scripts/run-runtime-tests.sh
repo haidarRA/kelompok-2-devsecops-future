@@ -34,8 +34,8 @@ for i in $(seq 1 "$RUNS"); do
     kubectl apply -f "$ATTACKER_MANIFEST" > /dev/null
     kubectl wait --for=condition=Ready pod/ubuntu-attacker -n "$NAMESPACE" --timeout=60s > /dev/null
 
-    T0=$(date +%s.%3N)
-    echo "T0 (attack start): $(date -d @"$T0" +%T.%3N 2>/dev/null || date +%T)"
+    T0=$(python3 -c "import time; print(f'{time.time():.3f}')")
+    echo "T0 (attack start): $(python3 -c "import time; t=$T0; print(f'{time.strftime(\"%T\", time.localtime(t))}.{int(t*1000)%1000:03d}')")"
 
     # Trigger serangan: spawn shell di dalam container (background, auto-exit)
     kubectl exec ubuntu-attacker -n "$NAMESPACE" -- bash -c "echo simulated-attack" > /dev/null 2>&1 &
@@ -45,8 +45,8 @@ for i in $(seq 1 "$RUNS"); do
     for attempt in $(seq 1 60); do
         DETECT_LINE=$(kubectl logs -n falco daemonset/falco --since=10s 2>/dev/null | grep "Shell spawned" | grep "ubuntu-attacker" | tail -n1)
         if [ -n "$DETECT_LINE" ]; then
-            T1=$(date +%s.%3N)
-            echo "T1 (Falco detected): $(date -d @"$T1" +%T.%3N 2>/dev/null || date +%T)"
+            T1=$(python3 -c "import time; print(f'{time.time():.3f}')")
+            echo "T1 (Falco detected): $(python3 -c "import time; t=$T1; print(f'{time.strftime(\"%T\", time.localtime(t))}.{int(t*1000)%1000:03d}')")"
             break
         fi
         sleep 0.5
@@ -61,8 +61,8 @@ for i in $(seq 1 "$RUNS"); do
     T2=""
     for attempt in $(seq 1 60); do
         if ! kubectl get pod ubuntu-attacker -n "$NAMESPACE" > /dev/null 2>&1; then
-            T2=$(date +%s.%3N)
-            echo "T2 (pod deleted): $(date -d @"$T2" +%T.%3N 2>/dev/null || date +%T)"
+            T2=$(python3 -c "import time; print(f'{time.time():.3f}')")
+            echo "T2 (pod deleted): $(python3 -c "import time; t=$T2; print(f'{time.strftime(\"%T\", time.localtime(t))}.{int(t*1000)%1000:03d}')")"
             break
         fi
         sleep 0.5
@@ -73,9 +73,9 @@ for i in $(seq 1 "$RUNS"); do
         T2="$T1"
     fi
 
-    MTTD=$(echo "$T1 - $T0" | bc)
-    MTTR=$(echo "$T2 - $T1" | bc)
-    TOTAL=$(echo "$T2 - $T0" | bc)
+    MTTD=$(python3 -c "print(f'{$T1 - $T0:.3f}')")
+    MTTR=$(python3 -c "print(f'{$T2 - $T1:.3f}')")
+    TOTAL=$(python3 -c "print(f'{$T2 - $T0:.3f}')")
 
     echo "$i,$T0,$T1,$T2,$MTTD,$MTTR,$TOTAL" >> "$OUTPUT_CSV"
     echo "MTTD=${MTTD}s | MTTR=${MTTR}s | Total=${TOTAL}s"

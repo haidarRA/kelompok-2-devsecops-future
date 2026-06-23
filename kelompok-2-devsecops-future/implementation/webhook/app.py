@@ -71,11 +71,33 @@ def alert():
         pod, ns, (t_labeled - t_received) * 1000,
     )
 
+    # Also delete pod immediately for automated remediation (MTTR)
+    result = subprocess.run(
+        ["kubectl", "delete", "pod", pod, f"-n{ns}", "--grace-period=0", "--force", "--wait=false"],
+        capture_output=True, text=True,
+    )
+    t_deleted = time.time()
+    if result.returncode != 0:
+        logger.error("Gagal delete pod %s: %s", pod, result.stderr)
+        return jsonify({
+            "status": "labeled_but_delete_failed",
+            "pod": pod,
+            "namespace": ns,
+            "label_latency_ms": round((t_labeled - t_received) * 1000, 1),
+            "delete_error": result.stderr,
+        }), 200
+
+    logger.info(
+        "POD DELETED | pod=%s ns=%s total_latency_ms=%.1f",
+        pod, ns, (t_deleted - t_received) * 1000,
+    )
     return jsonify({
-        "status": "labeled",
+        "status": "remediated",
         "pod": pod,
         "namespace": ns,
         "label_latency_ms": round((t_labeled - t_received) * 1000, 1),
+        "delete_latency_ms": round((t_deleted - t_labeled) * 1000, 1),
+        "total_latency_ms": round((t_deleted - t_received) * 1000, 1),
     }), 200
 
 
