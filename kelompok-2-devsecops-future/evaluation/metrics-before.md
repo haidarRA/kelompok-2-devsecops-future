@@ -1,3 +1,4 @@
+
 # Metrics Before — Baseline Tanpa Enhancement
 
 > Baseline diukur pada pipeline Week 12 sebelum OPA, Falco, dan Kyverno dipasang.
@@ -19,37 +20,50 @@ Kelima manifest berbahaya di-deploy ke cluster TANPA OPA terpasang. Hasil:
 **Kesimpulan baseline:** 5 dari 5 manifest berbahaya berhasil masuk ke cluster
 (100% lolos — tidak ada proteksi sama sekali).
 
+---
+
 ## 2. Baseline Runtime Security — Shell Access Tanpa Falco/Kyverno
 
 ```bash
 kubectl apply -f evaluation/test-manifests/runtime/ubuntu-attacker.yaml
 kubectl exec -it ubuntu-attacker -- bash
+
 ```
 
 Hasil pengamatan:
 
-- **Apakah ada alert yang muncul?** Tidak ada. Tidak ada mekanisme deteksi.
-- **Berapa lama proses bash bisa berjalan?** Tak terbatas. Pod berjalan terus tanpa gangguan.
-- **Apakah pod terhapus otomatis?** Tidak. Pod tetap running sampai dihapus manual.
+* **Apakah ada alert yang muncul?** Tidak ada. Tidak ada mekanisme deteksi.
+* **Berapa lama proses bash bisa berjalan?** Tak terbatas. Pod berjalan terus tanpa gangguan.
+* **Apakah pod terhapus otomatis?** Tidak. Pod tetap running sampai dihapus manual.
 
 **Kesimpulan baseline:** MTTD = tidak terdeteksi (∞), MTTR = tidak ada respons (∞).
 
+---
+
 ## 3. Baseline Pipeline Performance
 
-Waktu pipeline GitLab CI sebelum stage `validate-k8s-manifest` ditambahkan:
+Waktu pipeline GitLab CI sebelum stage `validate-k8s-manifest` ditambahkan (dihitung dari akumulasi durasi tertinggi tiap tahapan *sequential* pada run riil):
 
-| Run | Waktu total pipeline |
-|-----|----------------------|
-| 1 | 2m 45s |
-| 2 | 2m 38s |
-| 3 | 2m 42s |
-| **Rata-rata** | **2m 42s** |
+| Run | ID Pipeline | Commit ID | Waktu total pipeline |
+| --- | --- | --- | --- |
+| 1 | #2571262626 | `cfc3bf68` | 7m 29s |
+| 2 | #2571362461 | `2984afbe` | 7m 18s |
+| 3 | #2572101091 | `430e8c35` | 7m 11s |
+| **Rata-rata** | - | - | **7m 19s** |
+
+> *Catatan Bottleneck:* Tahap paling memakan waktu pada kondisi awal ini berada pada stage `package` (`build-docker-image`) dengan durasi rata-rata ~1m 38s akibat proses download dependencies dan penyusunan layer Docker yang belum dioptimasi dengan *caching*.
+
+---
 
 ## 4. Ringkasan Baseline
 
 | Metrik | Nilai Baseline |
-|--------|---------------|
+| --- | --- |
 | Manifest berbahaya terblok | 0% |
 | Runtime attack terdeteksi | Tidak pernah (∞) |
 | Respons otomatis (MTTR) | Tidak ada (∞) |
-| Pipeline overhead | 0 (belum ada stage security) |
+| Durasi Rata-rata Pipeline | 7m 19s |
+| Pipeline overhead | 0s (belum ada stage `validate-k8s-manifest`) |
+
+```
+
