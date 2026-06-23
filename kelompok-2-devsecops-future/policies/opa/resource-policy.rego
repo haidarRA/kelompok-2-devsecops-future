@@ -1,4 +1,7 @@
-package k8s.resources
+package main
+
+resource := input.review.object if input.review.object
+resource := input if not input.review.object
 
 # ============================================================
 # Resource Limits Policy - berdasarkan Paper A
@@ -7,8 +10,7 @@ package k8s.resources
 # ============================================================
 
 # S3-01: Container WAJIB punya blok resources
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     not container.resources
@@ -19,8 +21,7 @@ deny[msg] {
 }
 
 # S3-02: Container WAJIB punya resources.limits (bukan cuma requests)
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     container.resources
@@ -32,8 +33,7 @@ deny[msg] {
 }
 
 # S3-03: Container WAJIB punya resources.requests (bukan cuma limits)
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     container.resources
@@ -45,8 +45,7 @@ deny[msg] {
 }
 
 # S3-05: CPU limit TIDAK BOLEH lebih dari 2 core (2000m) -- batas wajar untuk pipeline kelompok ini
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     limit := container.resources.limits.cpu

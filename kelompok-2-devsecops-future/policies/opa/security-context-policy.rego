@@ -1,4 +1,7 @@
-package k8s.security_context
+package main
+
+resource := input.review.object if input.review.object
+resource := input if not input.review.object
 
 # ============================================================
 # Security Context Policy - berdasarkan Paper A
@@ -7,8 +10,7 @@ package k8s.security_context
 # ============================================================
 
 # S2-01: Container TIDAK BOLEH eksplisit jalan sebagai root (uid 0)
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     container.securityContext.runAsUser == 0
@@ -19,8 +21,7 @@ deny[msg] {
 }
 
 # S2-02: Container WAJIB punya securityContext.runAsNonRoot: true
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     not container.securityContext.runAsNonRoot == true
@@ -31,8 +32,7 @@ deny[msg] {
 }
 
 # S2-04: Container TIDAK BOLEH privileged
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     container.securityContext.privileged == true
@@ -43,8 +43,7 @@ deny[msg] {
 }
 
 # S2-05: Container TIDAK BOLEH mengizinkan privilege escalation
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     container.securityContext.allowPrivilegeEscalation == true

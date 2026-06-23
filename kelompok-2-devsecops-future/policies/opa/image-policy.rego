@@ -1,4 +1,7 @@
-package k8s.image
+package main
+
+resource := input.review.object if input.review.object
+resource := input if not input.review.object
 
 # ============================================================
 # Image Policy - berdasarkan Paper A (Stanišić et al., 2026)
@@ -6,8 +9,7 @@ package k8s.image
 # ============================================================
 
 # S1-01, S1-04: Image HARUS berasal dari registry resmi tim
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     not startswith(container.image, "registry.gitlab.com/")
@@ -18,8 +20,7 @@ deny[msg] {
 }
 
 # S1-02: Image TIDAK BOLEH menggunakan tag ':latest' (tidak reproducible)
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     endswith(container.image, ":latest")
@@ -30,8 +31,7 @@ deny[msg] {
 }
 
 # S1-05: Image WAJIB punya tag eksplisit (tidak boleh kosong)
-deny[msg] {
-    resource := input.review.object
+deny contains msg if {
     resource.kind == "Deployment"
     container := resource.spec.template.spec.containers[_]
     not contains(container.image, ":")
