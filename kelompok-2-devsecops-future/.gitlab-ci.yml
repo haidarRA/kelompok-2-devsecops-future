@@ -1,10 +1,31 @@
+# ============================================================
+# .gitlab-ci.yml — Enhanced Pipeline (Papers A + B)
+# ============================================================
+#
+# This is the ENHANCED version of the Week 12 baseline pipeline.
+# Two research-driven enhancements have been integrated:
+#
+#   Paper A  → stage: policy-check, job: validate-k8s-manifest (line 333)
+#              Shift-left OPA/Conftest policy enforcement. Blocks
+#              non-compliant K8s manifests (image trust, security
+#              context, resource limits) BEFORE image build.
+#
+#   Paper B  → Runtime detection + remediation (Falco + Kyverno)
+#              These are CLUSTER-SIDE additions configured outside CI.
+#              See implementation/falco/ and implementation/kyverno/
+#              for the setup. No CI pipeline changes required.
+#
+# PREREQUISITE: Your Go application source code must be in a
+# subdirectory named `pbl-taskflow-go/` at the repository root.
+# ============================================================
+
 image: golang:1.25-alpine
 
 stages: 
   - init
   - test
   - build
-  - policy-check
+  - policy-check       # ← NEW: Paper A enhancement
   - package
   - verify
   - security-scan
@@ -28,7 +49,7 @@ services:
 .notify_template: &notify_template
   after_script:
     - apk add --no-cache curl tzdata
-    - cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime # Set waktu ke WIB
+    - cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
     - |
       if [ "$CI_JOB_STATUS" == "success" ]; then
         SYMBOL="✅"
@@ -40,7 +61,6 @@ services:
       
       CURR_TIME=$(date "+%Y-%m-%d %H:%M")
       
-      # Menyusun pesan telegram bot biar sesuai
       MESSAGE="${SYMBOL} <b>PIPELINE ${STATUS}</b>%0A%0A"
       MESSAGE="${MESSAGE}<b>Job:</b> ${CI_JOB_NAME}%0A"
       MESSAGE="${MESSAGE}<b>Branch:</b> ${CI_COMMIT_REF_NAME}%0A"
@@ -117,13 +137,8 @@ smoke_test_job:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
 
   script:
-    # Pull image
     - docker pull $CONTAINER_IMAGE
-
-    # Create network
     - docker network create smoke-net
-
-    # Run PostgreSQL
     - |
       docker run -d \
       --name postgres-smoke \
@@ -132,15 +147,11 @@ smoke_test_job:
       -e POSTGRES_USER=user \
       -e POSTGRES_PASSWORD=password \
       postgres:16-alpine
-
-    # Wait PostgreSQL ready
     - |
       until docker exec postgres-smoke pg_isready -U user; do
         echo "⏳ Waiting PostgreSQL..."
         sleep 2
       done
-
-    # Run app
     - |
       docker run -d \
       --name app-smoke \
@@ -148,17 +159,9 @@ smoke_test_job:
       -p 8080:8080 \
       -e DATABASE_URL="postgres://user:password@postgres-smoke:5432/taskflow_test?sslmode=disable" \
       $CONTAINER_IMAGE
-
-
-    # 3. JEMBATAN KE LOCALHOST (Socat tunnel)
-    # Ini menghubungkan localhost Runner ke port 8080 milik service Docker
     - socat TCP-LISTEN:8080,fork TCP:docker:8080 &
     - echo "Waiting for server to start..."
-
-    # Tunggu App
     - sleep 15
-
-    # Smoke test health
     - |
       echo "Checking /health via localhost..."
       if curl -f http://localhost:8080/health; then
@@ -168,8 +171,6 @@ smoke_test_job:
         docker logs app-smoke
         exit 1
       fi
-
-    # Smoke test stats
     - |
       echo "Checking /api/v1/stats via localhost..."
       if curl -f http://localhost:8080/api/v1/stats; then
@@ -179,7 +180,6 @@ smoke_test_job:
         docker logs app-smoke
         exit 1
       fi
-
     - echo "✅ Smoke test berhasil"
 
   after_script:
@@ -330,6 +330,15 @@ deploy_to_github_manifest:
     - main
   <<: *notify_template
 
+# ============================================================
+# Paper A Enhancement: OPA Policy Check (Shift-Left Security)
+# ============================================================
+# Added stage: policy-check that runs conftest test against
+# kubernetes/deployment.yaml BEFORE the Docker image is built.
+# Three Rego policies enforce: image trust (only gitlab registry),
+# security context (non-root, no privilege), resource limits.
+# If any policy fails → pipeline FAILS → deployment blocked.
+# ============================================================
 validate-k8s-manifest:
   stage: policy-check
   image: openpolicyagent/conftest:v0.55.0

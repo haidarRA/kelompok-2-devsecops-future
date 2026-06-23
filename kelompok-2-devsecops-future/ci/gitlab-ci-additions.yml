@@ -1,42 +1,35 @@
 # ============================================================
-# TAMBAHAN untuk .gitlab-ci.yml yang sudah ada (Week 12)
+# REFERENCE: GitLab CI Additions — Paper A Enhancement
 # ============================================================
 #
-# CARA PAKAI:
-# 1. Tambahkan "policy-check" ke daftar `stages:` di .gitlab-ci.yml,
-#    posisikan SETELAH "build" dan SEBELUM "package", contoh:
+# This file documents the changes made to the baseline
+# `.gitlab-ci.yml` for the Paper A (OPA/Conftest) enhancement.
 #
-#    stages:
-#      - init
-#      - test
-#      - build
-#      - policy-check   <-- BARU
-#      - package
-#      - verify
-#      - security-scan
-#      - release
-#      - deploy
+# The COMPLETE merged pipeline is already in the root
+# `.gitlab-ci.yml` at the enhancement repository root.
+# This snippet is kept here as a reference to show what
+# was added relative to the Week 12 baseline.
 #
-# 2. Copy job `validate-k8s-manifest` di bawah ini ke .gitlab-ci.yml
+# Changes made:
+#   1. Added `policy-check` to the `stages:` list
+#      (positioned between `build` and `package`)
+#   2. Added the `validate-k8s-manifest` job below
 #
-# 3. Copy folder policies/opa/*.rego ke root repo kalian
-#
-# Job ini menjalankan conftest (pembungkus OPA untuk testing config file)
-# terhadap kubernetes/deployment.yaml SEBELUM image di-build/deploy.
-# Kalau ada pelanggaran -> pipeline GAGAL, developer dapat notifikasi
-# Telegram (pakai notify_template yang sudah ada), dan deployment
-# TIDAK lanjut ke stage berikutnya.
+# Paper B (Falco + Kyverno) enhancements are runtime-only
+# and do not require CI pipeline changes.
 # ============================================================
-
-validate-k8s-manifest:
-  stage: policy-check
-  image: openpolicyagent/conftest:v0.55.0
-  needs: ["compile-binary"]
-  before_script: []
-  script:
-    - echo "Menjalankan OPA policy check terhadap manifest Kubernetes..."
-    - conftest test kubernetes/deployment.yaml --policy policies/opa/ --output table
-  <<: *notify_template
-  only:
-    - main
-    - develop
+#
+# --- BEGIN SNIPPET ---
+# validate-k8s-manifest:
+#   stage: policy-check
+#   image: openpolicyagent/conftest:v0.55.0
+#   needs: ["compile-binary"]
+#   before_script: []
+#   script:
+#     - echo "Menjalankan OPA policy check terhadap manifest Kubernetes..."
+#     - conftest test kubernetes/deployment.yaml --policy policies/opa/ --output table
+#   <<: *notify_template
+#   only:
+#     - main
+#     - develop
+# --- END SNIPPET ---

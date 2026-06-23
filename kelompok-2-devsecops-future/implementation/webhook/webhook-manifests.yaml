@@ -58,7 +58,7 @@ spec:
         - name: webhook
           # Ganti dengan image hasil build kalian sendiri, contoh:
           # registry.gitlab.com/<namespace>/<project>/falco-webhook:latest
-          image: falco-webhook:v1
+          image: falco-webhook:v3
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000

@@ -6,8 +6,8 @@
 |--------|-------------|------------------|---------|
 | Paper A — Detection rate | 92% | 100% (15/15) | **Melebihi** |
 | Paper A — Pipeline overhead | +3.5% | +1.2% (+2 detik) | **Lebih baik** |
-| Paper B — MTTD | "near real-time" | 0.67 detik | **Sesuai** |
-| Paper B — MTTR | "near real-time" | 2.03 detik | **Sesuai** |
+| Paper B — MTTD | "near real-time" | 0.60 detik | **Sesuai** |
+| Paper B — MTTR | "near real-time" | 0.24 detik | **Sesuai** |
 
 **Penjelasan selisih:**
 - Detection rate kelompok (100%) lebih tinggi dari Paper A (92%) karena jumlah skenario lebih kecil (20 vs 50) dan skenario dipilih agar fully testable.
@@ -35,7 +35,7 @@ Namun, ada beberapa catatan:
 Overhead +2 detik (+1.2%) sangat kecil dibandingkan manfaat keamanan. Sebagai perbandingan, unit test stage biasanya memakan waktu 30-60 detik. OPA check adalah investasi yang sangat efisien.
 
 **Detection delay vs production requirements:**
-MTTD rata-rata 0.67 detik dan MTTR 2.03 detik. Untuk skenario production dengan replika tinggi (3+ pod), downtime aplikasi kurang dari 2 detik karena pod lain tetap melayani traffic. Delay ini acceptable untuk大多数 use case.
+MTTD rata-rata 0.60 detik dan MTTR rata-rata 0.24 detik. Untuk skenario production dengan replika tinggi (3+ pod), downtime aplikasi kurang dari 2 detik karena pod lain tetap melayani traffic. Delay ini acceptable untuk sebagian besar use case.
 
 **Webhook single point of failure:**
 Webhook adalah komponen kritis dalam pipeline remediasi. Jika webhook down, remediasi hanya bergantung pada Kyverno ClusterCleanupPolicy yang berjalan setiap 1 menit. Untuk production, disarankan menambahkan replica webhook (saat ini hanya 1 replica).
@@ -50,6 +50,6 @@ Webhook adalah komponen kritis dalam pipeline remediasi. Jika webhook down, reme
 
 4. **Pod availability:** Falco dan webhook berjalan di namespace yang sama (`falco`), sehingga kegagalan namespace dapat mempengaruhi kedua komponen. Paper B tidak membahas disaster recovery untuk komponen keamanan itu sendiri.
 
-5. **MTTR variance:** Pada beberapa run, MTTR mencapai 3+ detik karena variasi latensi jaringan antara webhook dan API server. Paper B tidak memberikan distribusi MTTR, hanya rata-rata.
+5. **MTTR variance:** Pada beberapa run, MTTR mencapai 0.73 detik karena variasi latensi jaringan antara webhook dan API server. Paper B tidak memberikan distribusi MTTR, hanya rata-rata.
 
 6. **Falco rule coverage:** Custom rules kami hanya mendeteksi `Terminal shell in container`. Paper A mencakup spektrum kebijakan yang lebih luas (image trust, resource, security context) tetapi hanya pada CI time, bukan runtime.

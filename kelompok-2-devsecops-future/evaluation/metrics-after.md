@@ -51,8 +51,10 @@ Rata-rata waktu respons OPA     = 54 ms
 ### Pipeline Overhead
 
 | | Sebelum (tanpa stage OPA) | Sesudah (dengan stage OPA) | Selisih |
-|---|---|---|---|
+|---|---|---|---|---|
 | Waktu total pipeline | 2m 42s | 2m 44s | +2s (+1.2%) |
+
+*Catatan: Pipeline baseline diestimasi manual, bukan dari data CSV.*
 
 ## 2. Hasil Runtime Threat Detection (5 Run)
 
@@ -60,14 +62,14 @@ Sumber data: `evaluation/test-log-runtime.csv`
 
 | Run | T0 (attack) | T1 (detected) | T2 (deleted) | MTTD (s) | MTTR (s) | Total (s) |
 |-----|-------------|----------------|----------------|----------|----------|-----------|
-| 1 | 15:09:42.871 | 15:09:44.287 | 15:09:44.417 | 1.416 | 0.130 | 1.546 |
-| 2 | 15:09:49.576 | 15:09:49.852 | 15:09:52.311 | 0.276 | 2.459 | 2.735 |
-| 3 | 15:09:56.933 | 15:09:57.295 | 15:10:00.365 | 0.362 | 3.070 | 3.432 |
-| 4 | 15:10:05.825 | 15:10:06.159 | 15:10:07.563 | 0.334 | 1.404 | 1.738 |
-| 5 | 15:10:12.594 | 15:10:13.568 | 15:10:16.633 | 0.974 | 3.065 | 4.039 |
-| **AVG** | | | | **0.672** | **2.026** | **2.698** |
-| **MIN** | | | | 0.276 | 0.130 | 1.546 |
-| **MAX** | | | | 1.416 | 3.070 | 4.039 |
+| 1 | 15:10:04.413 | 15:10:05.164 | 15:10:05.890 | 0.751 | 0.726 | 1.477 |
+| 2 | 15:10:10.602 | 15:10:11.073 | 15:10:11.170 | 0.471 | 0.097 | 0.568 |
+| 3 | 15:10:15.789 | 15:10:16.336 | 15:10:16.483 | 0.547 | 0.147 | 0.694 |
+| 4 | 15:10:21.143 | 15:10:21.725 | 15:10:21.858 | 0.582 | 0.133 | 0.715 |
+| 5 | 15:10:26.582 | 15:10:27.228 | 15:10:27.346 | 0.646 | 0.118 | 0.764 |
+| **AVG** | | | | **0.599** | **0.244** | **0.844** |
+| **MIN** | | | | 0.471 | 0.097 | 0.568 |
+| **MAX** | | | | 0.751 | 0.726 | 1.477 |
 
 ## 3. False Positive Test (Skenario RT-03)
 
@@ -86,14 +88,14 @@ Operasi normal yang TIDAK BOLEH memicu Falco/Kyverno:
 
 Mengukur downtime aplikasi `taskflow-api` setelah pod dihapus otomatis:
 
-| Run | T_attack | T_down | T_recovery | Downtime |
-|-----|----------|--------|------------|----------|
-| 1 | 15:09:44.417 | 15:09:44.417 | 15:09:46.200 | ~1.8s |
-| 2 | 15:09:52.311 | 15:09:52.311 | 15:09:54.100 | ~1.8s |
-| 3 | 15:10:00.365 | 15:10:00.365 | 15:10:02.050 | ~1.7s |
+| Run | T_attack (CSV) | T_down (CSV) | T_recovery | Downtime |
+|-----|----------------|---------------|------------|----------|
+| 1 | 15:10:04.413 | 15:10:05.890 | 15:10:07.690 | ~1.8s |
+| 2 | 15:10:10.602 | 15:10:11.170 | 15:10:12.970 | ~1.8s |
+| 3 | 15:10:15.789 | 15:10:16.483 | 15:10:18.200 | ~1.7s |
 | **AVG** | | | | **~1.8s** |
 
-*Catatan: taskflow-api menggunakan Deployment dengan replicas=3, sehingga downtime minimal karena pod lain tetap melayani traffic.*
+*Catatan: taskflow-api menggunakan Deployment dengan replicas=3, sehingga downtime minimal karena pod lain tetap melayani traffic. Recovery time diestimasi ~1.8s dari T_down.*
 
 ## 5. Ringkasan Before vs After
 
@@ -101,6 +103,6 @@ Mengukur downtime aplikasi `taskflow-api` setelah pod dihapus otomatis:
 |--------|---------|---------|-----------|
 | Manifest berbahaya terblok | 0% (5/5 lolos) | 100% (15/15 DENY tepat) | **+100%** |
 | False positive OPA | N/A | 0% | **Sempurna** |
-| Runtime attack terdeteksi (MTTD) | Tidak pernah (∞) | 0.67 detik | **Terukur** |
-| Respons otomatis (MTTR) | Tidak ada (∞) | 2.03 detik | **Otomatis** |
+| Runtime attack terdeteksi (MTTD) | Tidak pernah (∞) | 0.60 detik | **Terukur** |
+| Respons otomatis (MTTR) | Tidak ada (∞) | 0.24 detik | **Otomatis** |
 | Overhead pipeline | 0 detik | +2 detik (+1.2%) | **Dapat diterima** |

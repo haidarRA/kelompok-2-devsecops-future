@@ -4,6 +4,12 @@
 
 This repository implements two security enhancements on a Kubernetes-based DevSecOps pipeline using a **research-driven approach**. Each enhancement is grounded in a published academic paper and validated empirically using quantitative metrics.
 
+This is the **enhanced** version of the baseline Week 12 project (`week12-devops-kelompok2`). The baseline provided the CI/CD pipeline, Kubernetes manifests, and deployment scripts. This repository adds:
+- **Paper A:** OPA/Conftest policy-as-code enforcement in the CI pipeline (`policy-check` stage)
+- **Paper B:** Runtime threat detection (Falco) + automated remediation (Webhook + Kyverno)
+
+The complete merged `.gitlab-ci.yml` (baseline + Paper A addition) is at the repository root. Baseline K8s manifests (`kubernetes/`) and the deploy script (`deploy.sh`) are also included for completeness.
+
 **Stack:** Minikube (local K8s), Falco + Falcosidekick, Kyverno, OPA/Conftest, GitLab CI, Python/Flask
 
 ---
@@ -59,9 +65,16 @@ kelompok-2-devsecops-future/
 │   └── test-manifests/                YAML manifests for testing
 │       ├── opa/                       20 test manifests (S1-S4)
 │       └── runtime/ubuntu-attacker.yaml
-├── ci/gitlab-ci-additions.yml         GitLab CI stage for OPA policy check
-└── docs/
-    └── refleksi-kelompok.md           Group reflection (3 questions)
+    ├── .gitlab-ci.yml                    Complete merged CI pipeline (baseline + Paper A)
+    ├── ci/gitlab-ci-additions.yml        Reference: snippet of Paper A addition
+    ├── kubernetes/                       Baseline K8s manifests (from week12)
+    │   ├── deployment.yaml
+    │   ├── service.yaml
+    │   ├── namespace-dev.yaml
+    │   └── namespace-prod.yaml
+    ├── deploy.sh                         Baseline deployment script
+    └── docs/
+        └── refleksi-kelompok.md           Group reflection (3 questions)
 ```
 
 ---
@@ -115,9 +128,9 @@ kubectl exec -n falco $FALCO_POD -- kill -HUP 1
 
 ```bash
 eval $(minikube docker-env)
-docker build -t falco-webhook:v1 implementation/webhook/
+docker build -t falco-webhook:v3 implementation/webhook/
 kubectl apply -f implementation/webhook/webhook-manifests.yaml
-kubectl set image deployment/falco-webhook -n falco webhook=falco-webhook:v1
+kubectl set image deployment/falco-webhook -n falco webhook=falco-webhook:v3
 kubectl patch deployment falco-webhook -n falco -p \
   '{"spec":{"template":{"spec":{"containers":[{"name":"webhook","imagePullPolicy":"Never"}]}}}}'
 kubectl rollout status deployment/falco-webhook -n falco
@@ -157,9 +170,11 @@ RBAC
 kubectl apply -f implementation/kyverno/terminate-compromised-pod.yaml
 ```
 
-### 6. (Optional) Add OPA Policy Check to GitLab CI
+### 6. CI Pipeline (OPA Policy Check)
 
-Add the content of `ci/gitlab-ci-additions.yml` to your `.gitlab-ci.yml`.
+This repository already includes a complete merged `.gitlab-ci.yml` at the root, combining the baseline pipeline with the Paper A `validate-k8s-manifest` job. The `policy-check` stage runs `conftest test kubernetes/deployment.yaml --policy policies/opa/` and blocks non-compliant manifests before image build.
+
+If you are integrating into a different baseline, see `ci/gitlab-ci-additions.yml` for the snippet to add.
 
 ---
 
@@ -249,9 +264,9 @@ Each iteration:
 
 | Metric | Average |
 |--------|---------|
-| MTTD (Mean Time to Detect) | 0.67 s |
-| MTTR (Mean Time to Remediate) | 2.03 s |
-| Total (Attack → Pod Deleted) | 2.70 s |
+| MTTD (Mean Time to Detect) | 0.60 s |
+| MTTR (Mean Time to Remediate) | 0.24 s |
+| Total (Attack → Pod Deleted) | 0.84 s |
 
 ---
 

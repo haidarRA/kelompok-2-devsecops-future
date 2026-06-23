@@ -1,28 +1,18 @@
-"""
-Flask webhook server - berdasarkan Paper B (Shenoy et al., 2025)
-
-Menerima alert JSON dari Falcosidekick, lalu memberi label
-`suspicious=true` pada pod yang terdeteksi -- label inilah yang
-kemudian dibaca oleh Kyverno ClusterPolicy untuk menghapus pod
-secara otomatis.
-
-Alur lengkap:
-  Falco deteksi shell spawn
-    -> Falcosidekick forward alert ke webhook ini (POST /)
-    -> Webhook label pod sebagai suspicious=true
-    -> Kyverno ClusterPolicy hapus pod berlabel suspicious=true
-"""
-
 import logging
-import subprocess
 import time
 
 from flask import Flask, request, jsonify
+from kubernetes import client, config
 
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("falco-webhook")
+
+config.load_incluster_config()
+api = client.CoreV1Api()
+
+
 
 
 @app.route("/", methods=["POST"])
@@ -38,7 +28,6 @@ def alert():
         pod = data["output_fields"]["k8s.pod.name"]
         ns = data["output_fields"]["k8s.ns.name"]
     except KeyError:
-        # Fallback untuk variasi field name pada versi Falco berbeda
         try:
             pod = data["output_fields"]["k8s.pod.name"]
             ns = data["output_fields"]["k8s.namespace.name"]
@@ -54,47 +43,49 @@ def alert():
         rule, priority, pod, ns, t_received,
     )
 
-    result = subprocess.run(
-        ["kubectl", "label", "pod", pod, "suspicious=true", f"-n{ns}", "--overwrite"],
-        capture_output=True,
-        text=True,
-    )
+    if rule != "Terminal shell in container":
+        logger.info("Skipping non-shell rule=%s for %s/%s", rule, ns, pod)
+        return jsonify({"status": "skipped_unrelated_rule", "pod": pod, "namespace": ns}), 200
+
+    try:
+        api.patch_namespaced_pod(
+            pod, ns, {"metadata": {"labels": {"suspicious": "true"}}}
+        )
+    except client.exceptions.ApiException as e:
+        if e.status == 404:
+            logger.info("Pod %s already gone, skipping label", pod)
+            return jsonify({"status": "already_remediated", "pod": pod, "namespace": ns}), 200
+        logger.error("Gagal label pod %s: %s", pod, e)
+        return jsonify({"error": "failed to label pod", "detail": str(e)}), 500
 
     t_labeled = time.time()
-
-    if result.returncode != 0:
-        logger.error("Gagal label pod %s: %s", pod, result.stderr)
-        return jsonify({"error": "failed to label pod", "detail": result.stderr}), 500
-
     logger.info(
         "POD LABELED | pod=%s ns=%s label_latency_ms=%.1f",
         pod, ns, (t_labeled - t_received) * 1000,
     )
 
-    # Also delete pod immediately for automated remediation (MTTR)
-    result = subprocess.run(
-        ["kubectl", "delete", "pod", pod, f"-n{ns}", "--grace-period=0", "--force", "--wait=false"],
-        capture_output=True, text=True,
-    )
-    t_deleted = time.time()
-    if result.returncode != 0:
-        logger.error("Gagal delete pod %s: %s", pod, result.stderr)
+    try:
+        api.delete_namespaced_pod(pod, ns, grace_period_seconds=0)
+    except client.exceptions.ApiException as e:
+        if e.status == 404:
+            logger.info("Pod %s already deleted, skipping", pod)
+        else:
+            logger.error("Gagal delete pod %s: %s", pod, e)
         return jsonify({
             "status": "labeled_but_delete_failed",
-            "pod": pod,
-            "namespace": ns,
+            "pod": pod, "namespace": ns,
             "label_latency_ms": round((t_labeled - t_received) * 1000, 1),
-            "delete_error": result.stderr,
+            "delete_error": str(e),
         }), 200
 
+    t_deleted = time.time()
     logger.info(
         "POD DELETED | pod=%s ns=%s total_latency_ms=%.1f",
         pod, ns, (t_deleted - t_received) * 1000,
     )
     return jsonify({
         "status": "remediated",
-        "pod": pod,
-        "namespace": ns,
+        "pod": pod, "namespace": ns,
         "label_latency_ms": round((t_labeled - t_received) * 1000, 1),
         "delete_latency_ms": round((t_deleted - t_labeled) * 1000, 1),
         "total_latency_ms": round((t_deleted - t_received) * 1000, 1),
