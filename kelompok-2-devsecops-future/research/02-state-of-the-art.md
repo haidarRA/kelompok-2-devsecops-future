@@ -53,6 +53,8 @@ Automated remediation for security incidents in Kubernetes is an active research
 - **Custom webhooks** (as used in Paper B and our implementation) offer the fastest response but require additional infrastructure and RBAC.
 - **Falcosidekick** provides multiple output mechanisms (webhook, Slack, AWS Lambda, GCP Cloud Functions), but none natively support pod deletion.
 
+
+
 ### Why Our Approach Advances the State of the Art
 
 Our implementation combines three remediation layers for defense in depth:
@@ -62,3 +64,76 @@ Our implementation combines three remediation layers for defense in depth:
 3. **Admission prevention** (Kyverno ClusterPolicy with validate.deny): Prevents new pods with `suspicious=true` from being created, blocking potential re-deployment of compromised configurations.
 
 This layered approach addresses a gap in both Paper A (no runtime response) and Paper B (relies on single-path remediation).
+
+
+### Implementation in This Project
+
+This project implements a **three-layer defense-in-depth remediation architecture**:
+
+#### Layer 1: Immediate Webhook-Based Deletion
+
+**Flask Webhook** (`implementation/webhook/app.py`):
+- Receives real-time Falco alerts from Falcosidekick
+- Extracts pod name and namespace from alert payload
+- Labels pod with `suspicious=true` (first latency point)
+- Immediately deletes pod with `grace_period_seconds=0` (force deletion)
+- Logs all latency metrics for observability
+
+**Response Latency Metrics** (from `evaluation/test-log-runtime.csv`):
+- **Label Latency**: 0.244 seconds average (sub-second) — time from alert received to pod labeled
+- **Delete Latency**: 0.119 seconds average — time from label applied to pod terminated
+- **Total MTTR**: 0.844 seconds average (range: 0.568–1.477s)
+
+#### Layer 2: Kyverno ClusterPolicy (Admission Prevention)
+
+**Policy** (`implementation/kyverno/delete-suspicious-pods.yaml`):
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: delete-suspicious-pods
+spec:
+  rules:
+    - name: delete-pods-on-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              selector:
+                matchLabels:
+                  suspicious: "true"
+      validate:
+        message: "Suspicious pod detected. Auto-remediation triggered by runtime threat mitigation policy."
+        deny: {}
+```
+- Prevents creation of new pods with label suspicious=true
+- Acts as a backup if webhook fails to delete a pod but successfully labels it
+- Provides hard security boundary at admission controller
+
+#### Layer 3: Kyverno ClusterCleanupPolicy (Scheduled Backup Cleanup)
+
+**Policy** (`implementation/kyverno/terminate-compromised-pod.yaml`):
+```yaml
+apiVersion: kyverno.io/v2
+kind: ClusterCleanupPolicy
+metadata:
+  name: terminate-compromised-pod
+spec:
+  schedule: "*/1 * * * *"
+  deletionPropagationPolicy: Background
+  match:
+    any:
+      - resources:
+          kinds:
+            - Pod
+          selector:
+            matchLabels:
+              suspicious: "true"
+```
+- Runs every minute as a background cleanup task
+- Catches pods the webhook missed due to network transients or timing issues
+- Ensures no compromised pod survives beyond ~1 minute even if webhook fails
+- Provides resilience through eventual consistency
+
+        
