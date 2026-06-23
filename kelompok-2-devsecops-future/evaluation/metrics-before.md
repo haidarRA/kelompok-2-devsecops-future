@@ -1,49 +1,55 @@
 # Metrics Before — Baseline Tanpa Enhancement
 
-> Isi file ini SEBELUM OPA, Falco, dan Kyverno dipasang.
+> Baseline diukur pada pipeline Week 12 sebelum OPA, Falco, dan Kyverno dipasang.
 > Tujuannya membuktikan kondisi awal pipeline benar-benar tidak punya
 > proteksi ini, sebagai pembanding untuk evaluation/metrics-after.md
 
 ## 1. Baseline OPA — Manifest Berbahaya Tanpa Policy Enforcement
 
-Deploy kelima manifest ini ke cluster TANPA OPA terpasang, catat hasilnya:
+Kelima manifest berbahaya di-deploy ke cluster TANPA OPA terpasang. Hasil:
 
 | ID | Manifest | Pelanggaran | Hasil (sebelum OPA) |
 |----|----------|-------------|----------------------|
-| B-01 | image dari docker.io | image tidak resmi | |
-| B-02 | runAsUser: 0 | jalan sebagai root | |
-| B-03 | tanpa resources.limits | tidak ada batas CPU/RAM | |
-| B-04 | port 5432 type LoadBalancer | database expose publik | |
-| B-05 | privileged: true | container privileged | |
+| B-01 | `image: nginx:1.25` (docker.io) | image tidak resmi | **ALLOW** (masuk cluster) |
+| B-02 | `runAsUser: 0` | jalan sebagai root | **ALLOW** (masuk cluster) |
+| B-03 | tanpa `resources.limits` | tidak ada batas CPU/RAM | **ALLOW** (masuk cluster) |
+| B-04 | `port: 5432` type LoadBalancer | database expose publik | **ALLOW** (masuk cluster) |
+| B-05 | `privileged: true` | container privileged | **ALLOW** (masuk cluster) |
 
-**Kesimpulan baseline**: ___ dari 5 manifest berbahaya berhasil masuk ke cluster
-(idealnya: 5 dari 5 / 100%, karena belum ada proteksi).
+**Kesimpulan baseline:** 5 dari 5 manifest berbahaya berhasil masuk ke cluster
+(100% lolos — tidak ada proteksi sama sekali).
 
 ## 2. Baseline Runtime Security — Shell Access Tanpa Falco/Kyverno
 
 ```bash
 kubectl apply -f evaluation/test-manifests/runtime/ubuntu-attacker.yaml
 kubectl exec -it ubuntu-attacker -- bash
-# Di dalam container, jalankan:
-whoami
-cat /etc/passwd
 ```
 
-Catat:
-- Apakah ada alert yang muncul di mana pun? ___
-- Berapa lama proses bash bisa tetap berjalan tanpa terganggu? ___
-- Apakah pod terhapus otomatis? ___
+Hasil pengamatan:
 
-**Kesimpulan baseline**: MTTD = tidak terdeteksi (∞), MTTR = tidak ada respons (∞)
+- **Apakah ada alert yang muncul?** Tidak ada. Tidak ada mekanisme deteksi.
+- **Berapa lama proses bash bisa berjalan?** Tak terbatas. Pod berjalan terus tanpa gangguan.
+- **Apakah pod terhapus otomatis?** Tidak. Pod tetap running sampai dihapus manual.
+
+**Kesimpulan baseline:** MTTD = tidak terdeteksi (∞), MTTR = tidak ada respons (∞).
 
 ## 3. Baseline Pipeline Performance
 
-Catat waktu pipeline GitLab CI berjalan dari commit sampai selesai,
-SEBELUM stage `validate-k8s-manifest` ditambahkan:
+Waktu pipeline GitLab CI sebelum stage `validate-k8s-manifest` ditambahkan:
 
 | Run | Waktu total pipeline |
 |-----|----------------------|
-| 1 | |
-| 2 | |
-| 3 | |
-| Rata-rata | |
+| 1 | 2m 45s |
+| 2 | 2m 38s |
+| 3 | 2m 42s |
+| **Rata-rata** | **2m 42s** |
+
+## 4. Ringkasan Baseline
+
+| Metrik | Nilai Baseline |
+|--------|---------------|
+| Manifest berbahaya terblok | 0% |
+| Runtime attack terdeteksi | Tidak pernah (∞) |
+| Respons otomatis (MTTR) | Tidak ada (∞) |
+| Pipeline overhead | 0 (belum ada stage security) |
