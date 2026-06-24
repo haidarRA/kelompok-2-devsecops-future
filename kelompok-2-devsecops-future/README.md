@@ -93,6 +93,19 @@ kelompok-2-devsecops-future/
 
 ---
 
+## Arsitektur Simple
+
+pipeline CI/CD
+
+<img width="1440" height="974" alt="image" src="https://github.com/user-attachments/assets/05f42467-4797-4c92-9562-1445c19def34" />
+
+kalau ada manifest yang melanggar policy (image registry, security context, resource limit), pipeline langsung berhenti sebelum sempat di-build apalagi di-deploy.
+Setelah aplikasi jalan di cluster, lapisan pertahanannya pindah ke runtime — ini bagian yang menangani serangan setelah pod sudah hidup:
+
+<img width="1440" height="968" alt="image" src="https://github.com/user-attachments/assets/b278e47d-957a-40e2-850b-088307c7169f" />
+
+Tiga kotak tersebut adalah jalur reaktif (deteksi → respons cepat → backup periodik), sementara kotak merah di bawah adalah satu-satunya yang sifatnya proaktif — mencegah pod yang sama muncul lagi sama sekali
+
 ## Setup from Scratch
 
 ### 1. Start Minikube
