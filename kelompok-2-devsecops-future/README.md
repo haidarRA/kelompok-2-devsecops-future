@@ -98,7 +98,7 @@ kelompok-2-devsecops-future/
 ### 1. Start Minikube
 
 ```bash
-minikube start --cpus=4 --memory=8192
+minikube start --driver=docker --cpus=2 --memory=4096
 minikube status
 ```
 
