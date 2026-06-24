@@ -128,6 +128,7 @@ helm install falco falcosecurity/falco -n falco --create-namespace \
   --set falcosidekick.config.webhook.address=http://falco-webhook.falco:5000/ \
   --wait
 ```
+See this [documentation](https://helm.sh/docs/intro/install) for further installation and had been facing troubles.
 
 Copy custom Falco rules into the running DaemonSet pod:
 
